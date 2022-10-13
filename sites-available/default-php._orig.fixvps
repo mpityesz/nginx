@@ -1,0 +1,67 @@
+## Prepare NGINX default vhost temp
+##
+## - Letsencrypt certificate to FQDN hostname
+## - Create root folder (/var/www/html/)
+## - Set FQDN and PHP-FPM pool.d
+
+server {
+    listen *:80;
+    listen [::]:80;
+
+    listen *:443 ssl http2;
+    listen [::]:443 ssl http2;
+
+    ## Server FQDN Letsencrypt certificate
+    ssl_certificate /etc/letsencrypt/live/###FQDN###/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/###FQDN###/privkey.pem;
+
+    ## Common SSL settings
+    include /etc/nginx/ssl/nginx-ssl-params.conf;
+
+    ## Redirect to https if accessed with http
+    include /etc/nginx/snippets/nginx-https-rewrite.conf;
+
+    ## Server FQDN name
+    server_name ###FQDN###;
+
+    ## Document root
+    root /var/www/html/;
+    disable_symlinks if_not_owner from=$document_root;
+
+    ## Common NGINX params
+    include /etc/nginx/snippets/nginx-common-params.conf;
+
+    ## Logging
+    error_log /var/log/nginx/default.vhost.error.log;
+    access_log /var/log/nginx/default.vhost.access.log combined;
+
+    ## Well-acme
+    include /etc/nginx/snippets/nginx-location-well-acme.conf;
+
+    ## Deny all rules
+    include /etc/nginx/snippets/nginx-location-deny-all.conf;
+
+    ## Favicon + robots
+    include /etc/nginx/snippets/nginx-location-favicon.conf;
+    include /etc/nginx/snippets/nginx-location-robots.conf;
+
+    ## Serving static files directly
+    include /etc/nginx/snippets/nginx-location-static-files.conf;
+
+    ## HTML
+    location / {
+        ## First attempt to serve request as file, then
+        ## as directory, then fall back to displaying a 404.
+        try_files $uri $uri/ =404;
+    }
+
+    ## PHP
+    location ~ \.php$ {
+        try_files $uri =404;
+        include /etc/nginx/fastcgi_params;
+        fastcgi_pass unix:/var/lib/###PHP-FPM###.www.sock;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_intercept_errors on;
+    }
+}
