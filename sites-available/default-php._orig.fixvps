@@ -3,6 +3,7 @@
 ## - Letsencrypt certificate to FQDN hostname
 ## - Create root folder (/var/www/html/)
 ## - Set FQDN and PHP-FPM pool.d
+## - Set htpasswd if needed (except .well-known)
 
 server {
     listen *:80;
@@ -50,6 +51,9 @@ server {
 
     ## HTML
     location / {
+        auth_basic "Admin Area";
+        auth_basic_user_file /etc/nginx/htpasswd/###FQDN###/.htpasswd_default;
+
         ## First attempt to serve request as file, then
         ## as directory, then fall back to displaying a 404.
         try_files $uri $uri/ =404;
